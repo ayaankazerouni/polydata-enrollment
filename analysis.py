@@ -5,45 +5,50 @@ import matplotlib.pyplot as plt
 
 df = pd.concat([pd.read_csv(f) for f in glob.glob('persistence-f*.csv')])
 
-def ethnicity_plot(df, major='Computer Science', ethnicity='Hispanic Latino'):
-    if not isinstance(ethnicity, list):
-        ethnicity = list(ethnicity)
-    if major is None:
-        dat = df[df['ethnicity'].isin(ethnicity)] \
-            .groupby(['cohort', 'ethnicity', 'year'], as_index=False) \
-            .agg('sum')
-    else:
-        dat = df[(df['major'] == major) & (df['ethnicity'].isin(ethnicity))] \
-            .groupby(['cohort', 'ethnicity', 'major', 'year'], as_index=False) \
-            .agg('sum')
-
-    dat = melted(dat)
-    make_plot(dat, major=major, ethnicity=ethnicity)
-
-def gender_plot(df, major='Computer Science', gender='Female'):
+def prepare_data(dat, major=None, gender=None, ethnicity=None):
     groupby = ['cohort', 'year']
-    if major is None:
-        dat = df[df['gender'] == gender]
-    else:
-        dat = df[(df['major'] == major) & (df['gender'] == gender)]
+    if major is not None:
+        dat = dat[dat['major'] == major]
         groupby.append('major')
-    dat = dat.groupby(groupby, as_index=False) \
-        .agg('sum')
+
+    if gender is not None:
+        dat = dat[dat['gender'] == gender]
+        groupby.append('gender')
+    
+    if ethnicity is not None:
+        ethnicity = list(ethnicity) if not isinstance(ethnicity, list) else ethnicity
+        dat = dat[dat['ethnicity'].isin(ethnicity)]
+        groupby.append('ethnicity')
+
+    if len(groupby) == 0:
+        dat = dat.agg('sum')
+    else:
+        dat = dat.groupby(groupby, as_index=False) \
+            .agg('sum')
+    
+    dat.head()
     
     dat = melted(dat)
-    make_plot(dat, major=major, gender=gender)
+    return dat
 
-def make_plot(dat, major='Computer Science', ethnicity='', gender=''):
+def make_plot(dat, step_size=5, major=None, ethnicity=None, gender=None):
+    dat = prepare_data(dat=dat, major=major, ethnicity=ethnicity, gender=gender)
+
+    # Set labels for title
     major = major or 'Computing'
+    ethnicity = ethnicity or ''
+    gender = gender or 'All'
+
+    # Make the plot
     sns.set_style('darkgrid')
     g = sns.FacetGrid(data=dat, col='cohort', col_wrap=2, aspect=1.2, height=4,
         sharex=False, sharey=False)
     g.map_dataframe(sns.pointplot, x='year', y='value', hue='start_year',
         palette='muted', ci=None) \
-            .set_titles('{col_name} {col_var}', size=14) \
+            .set_titles('{col_name}', size=14) \
             .set_xlabels('') \
             .set_ylabels('# Students')
-    title = 'Number of {gender} {ethnicity} {major} majors at\nthe start and end of each academic year'.format(ethnicity=ethnicity, gender=gender, major=major)
+    title = '{gender} {ethnicity} {major} majors at\nthe start and end of each academic year'.format(ethnicity=ethnicity, gender=gender, major=major)
     g.fig.suptitle(title, size=14)
     g.fig.subplots_adjust(top=0.9)
 
@@ -53,8 +58,8 @@ def make_plot(dat, major='Computer Science', ethnicity='', gender=''):
     min_y = max(dat.value.min() - 2, 0)
 
     for ax in g.axes:
-        ax.set_yticks(range(min_y, max_y, 10))
-        ax.set_yticklabels(range(min_y, max_y, 10))
+        ax.set_yticks(range(min_y, max_y, step_size))
+        ax.set_yticklabels(range(min_y, max_y, step_size))
 
 def melted(dat):
     dat['Ended'] = dat.apply(
@@ -81,10 +86,4 @@ def melted(dat):
 
     return dat[dat['variable'].isin(['Started', 'Ended'])]
 
-# gender_plot(df, gender='Male', major=None)
-# gender_plot(df, gender='Male', major='Computer Science')
-# gender_plot(df, gender='Male', major='Computer Engineering')
-
-ethnicity_plot(df, ethnicity=['White', 'Asian'], major=None)
-ethnicity_plot(df, ethnicity=['White', 'Asian'], major='Computer Science')
-ethnicity_plot(df, ethnicity=['White', 'Asian'], major='Computer Engineering')
+make_plot(dat=df, major='Software Engineering', step_size=2)
