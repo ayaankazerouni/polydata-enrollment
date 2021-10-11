@@ -6,12 +6,14 @@ import matplotlib.pyplot as plt
 df = pd.concat([pd.read_csv(f) for f in glob.glob('persistence-f*.csv')])
 
 def ethnicity_plot(df, major='Computer Science', ethnicity='Hispanic Latino'):
+    if not isinstance(ethnicity, list):
+        ethnicity = list(ethnicity)
     if major is None:
-        dat = df[df['ethnicity'] == ethnicity] \
+        dat = df[df['ethnicity'].isin(ethnicity)] \
             .groupby(['cohort', 'ethnicity', 'year'], as_index=False) \
             .agg('sum')
     else:
-        dat = df[(df['major'] == major) & (df['ethnicity'] == ethnicity)] \
+        dat = df[(df['major'] == major) & (df['ethnicity'].isin(ethnicity))] \
             .groupby(['cohort', 'ethnicity', 'major', 'year'], as_index=False) \
             .agg('sum')
 
@@ -19,16 +21,16 @@ def ethnicity_plot(df, major='Computer Science', ethnicity='Hispanic Latino'):
     make_plot(dat, major=major, ethnicity=ethnicity)
 
 def gender_plot(df, major='Computer Science', gender='Female'):
+    groupby = ['cohort', 'year']
     if major is None:
-        dat = df[df['gender'] == gender] \
-            .groupby(['cohort', 'gender', 'year'], as_index=False) \
-            .agg('sum')
+        dat = df[df['gender'] == gender]
     else:
-        dat = df[(df['major'] == major) & (df['gender'] == gender)] \
-            .groupby(['cohort', 'gender', 'major', 'year'], as_index=False) \
-            .agg('sum')
+        dat = df[(df['major'] == major) & (df['gender'] == gender)]
+        groupby.append('major')
+    dat = dat.groupby(groupby, as_index=False) \
+        .agg('sum')
     
-    dat = melted(dat, var_of_interest='gender')
+    dat = melted(dat)
     make_plot(dat, major=major, gender=gender)
 
 def make_plot(dat, major='Computer Science', ethnicity='', gender=''):
@@ -51,21 +53,21 @@ def make_plot(dat, major='Computer Science', ethnicity='', gender=''):
     min_y = max(dat.value.min() - 2, 0)
 
     for ax in g.axes:
-        ax.set_yticks(range(min_y, max_y, 2))
-        ax.set_yticklabels(range(min_y, max_y, 2))
+        ax.set_yticks(range(min_y, max_y, 10))
+        ax.set_yticklabels(range(min_y, max_y, 10))
 
-def melted(dat, var_of_interest='ethnicity'):
+def melted(dat):
     dat['Ended'] = dat.apply(
         lambda r: r['still_enrolled'] + r['grad_to_date'],
         axis=1
     )
 
     if 'major' in list(dat.columns):
-        dat = dat.melt(id_vars=['cohort', var_of_interest, 'year', 'major'],
+        dat = dat.melt(id_vars=['cohort', 'year', 'major'],
             value_vars=['Started', 'still_enrolled', 
                 'grad_to_date', 'Ended'])
     else:
-        dat = dat.melt(id_vars=['cohort', var_of_interest, 'year'],
+        dat = dat.melt(id_vars=['cohort', 'year'],
             value_vars=['Started', 'still_enrolled', 
                 'grad_to_date', 'Ended'])
  
@@ -79,5 +81,10 @@ def melted(dat, var_of_interest='ethnicity'):
 
     return dat[dat['variable'].isin(['Started', 'Ended'])]
 
-ethnicity_plot(df, major=None)
-gender_plot(df, major=None)
+# gender_plot(df, gender='Male', major=None)
+# gender_plot(df, gender='Male', major='Computer Science')
+# gender_plot(df, gender='Male', major='Computer Engineering')
+
+ethnicity_plot(df, ethnicity=['White', 'Asian'], major=None)
+ethnicity_plot(df, ethnicity=['White', 'Asian'], major='Computer Science')
+ethnicity_plot(df, ethnicity=['White', 'Asian'], major='Computer Engineering')
