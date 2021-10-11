@@ -2,6 +2,17 @@ import sys
 import pandas as pd
 
 def main(filename, outname, year):
+    """
+    Reads a CSV file, assuming the format that is downloaded from the PolyData
+    Persistence and Graduation dashboard. Outputs the data in a format that can
+    be used to produce enrollment plots by cohort. 
+
+    Params:
+        - filename: The input file name
+        - outname: The desired output file name
+        - year: The starting year for the academic year in which these enrollment
+            numbers occurred
+    """
     df = pd.read_csv(filename)
     columns = ['Cohort Total Count', 'Term Code', '%', '% of Pop',
         'Dismissed #', 'Dismissed %', 'Not Enrolled #', 'Not Enrolled %',
